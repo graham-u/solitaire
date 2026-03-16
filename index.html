@@ -30,7 +30,7 @@
     <button id="btn-undo" disabled>Undo</button>
   </nav>
 
-  <div id="version">v8</div>
+  <div id="version">v9</div>
 
   <div id="win-overlay" class="hidden">
     <div id="win-dialog">
@@ -55,7 +55,17 @@
   <script src="app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js");
+      const hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register("sw.js").then((reg) => {
+        reg.update();
+      });
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (hadController && !refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
     }
   </script>
 </body>
