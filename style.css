@@ -7,7 +7,8 @@
 :root {
   --baize: #2d7a3a;
   --card-gap: 6px;
-  --card-width: calc((100vw - 8 * var(--card-gap)) / 7);
+  --game-width: 100vw;
+  --card-width: calc((var(--game-width) - 8 * var(--card-gap)) / 7);
   --card-height: calc(var(--card-width) * 1.4);
   --card-radius: 8px;
   --face-down-overlap: 16px;
@@ -437,4 +438,17 @@ body {
   height: 10px;
   z-index: 99;
   animation: confetti-fall 3s ease-in forwards;
+}
+
+/* Landscape: render game in a portrait container */
+@media (orientation: landscape) {
+  :root {
+    --game-width: calc(100vh * 0.56);
+    --card-width: calc((var(--game-width) - 8 * var(--card-gap)) / 7);
+  }
+
+  body {
+    max-width: var(--game-width);
+    margin: 0 auto;
+  }
 }
