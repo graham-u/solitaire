@@ -234,7 +234,21 @@ export default async function run() {
 
     await test("new game from win overlay deals fresh game", async () => {
       const result = await ev(() => {
-        // Already in win state from previous test
+        // Set up win state
+        dealGame();
+        const suits = ["clubs", "diamonds", "hearts", "spades"];
+        const ranks = [
+          "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
+        ];
+        state.foundations = suits.map((suit) =>
+          ranks.map((rank) => ({ suit, rank, faceUp: true }))
+        );
+        state.tableau = [[], [], [], [], [], [], []];
+        state.stock = [];
+        state.waste = [];
+        render();
+        checkWin();
+        // Now click new game from the win overlay
         document.getElementById("btn-win-new-game").click();
         return {
           winHidden: document
@@ -392,6 +406,66 @@ export default async function run() {
       }));
       assertEqual(result.wasteLen, 3, "waste should restore with 3 cards");
       assertEqual(result.moves, 3, "moves should restore");
+    });
+
+    await test("King stack can move to empty column", async () => {
+      const result = await ev(() => {
+        dealGame();
+        // Col 0: K♠, Q♥, J♠ (alternating colour run)
+        // Col 1: empty
+        state.tableau[0] = [
+          { suit: "spades", rank: "K", faceUp: true },
+          { suit: "hearts", rank: "Q", faceUp: true },
+          { suit: "spades", rank: "J", faceUp: true },
+        ];
+        state.tableau[1] = [];
+        render();
+        const el = document.querySelector(
+          '.card[data-source="tableau"][data-source-index="0"][data-card-index="0"]'
+        );
+        handleCardTap(el);
+        return {
+          col0Len: state.tableau[0].length,
+          col1Len: state.tableau[1].length,
+        };
+      });
+      assertEqual(result.col0Len, 0, "source column should be empty");
+      assertEqual(result.col1Len, 3, "dest should have all 3 cards");
+    });
+
+    await test("recycleWaste with empty waste is a no-op", async () => {
+      const result = await ev(() => {
+        dealGame();
+        const stockBefore = state.stock.length;
+        const movesBefore = state.moves;
+        recycleWaste();
+        return {
+          stockAfter: state.stock.length,
+          movesAfter: state.moves,
+          wasteLen: state.waste.length,
+        };
+      });
+      assertEqual(result.stockAfter, 24, "stock should be unchanged");
+      assertEqual(result.movesAfter, 0, "moves should be unchanged");
+      assertEqual(result.wasteLen, 0, "waste should still be empty");
+    });
+
+    await test("foundation to tableau score floors at zero", async () => {
+      const result = await ev(() => {
+        dealGame();
+        state.foundations[0] = [{ suit: "hearts", rank: "A", faceUp: true }];
+        state.tableau[0] = [{ suit: "spades", rank: "2", faceUp: true }];
+        state.score = 5; // less than 15
+        render();
+        const el = document.querySelector('.card[data-source="foundation"]');
+        handleCardTap(el);
+        return {
+          score: state.score,
+          foundationLen: state.foundations[0].length,
+        };
+      });
+      assertEqual(result.score, 0, "score should floor at 0, not go negative");
+      assertEqual(result.foundationLen, 0, "foundation should be empty");
     });
   });
 

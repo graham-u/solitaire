@@ -121,9 +121,14 @@ A simple toolbar with three buttons:
 
 ## Interaction
 
+### Current
+
 - **Tap a card** — Moves it to the best valid destination (foundation preferred, then tableau).
 - **Tap the stock** — Draws 1 card to the waste pile.
 - **Tap empty stock** — Recycles the waste pile back to stock.
+
+### Planned (future release)
+
 - **Drag a card or stack** — Drag from one tableau column to another, or to the foundation.
 - **Double-tap** — Sends a card directly to the foundation if valid.
 

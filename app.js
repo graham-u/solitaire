@@ -523,6 +523,17 @@ function loadState() {
     const saved = localStorage.getItem("solitaire-state");
     if (!saved) return false;
     const data = JSON.parse(saved);
+    // Validate required structure before applying
+    if (!Array.isArray(data.stock) ||
+        !Array.isArray(data.waste) ||
+        !Array.isArray(data.foundations) || data.foundations.length !== 4 ||
+        !data.foundations.every(f => Array.isArray(f)) ||
+        !Array.isArray(data.tableau) || data.tableau.length !== 7 ||
+        !data.tableau.every(c => Array.isArray(c)) ||
+        typeof data.score !== "number" ||
+        typeof data.moves !== "number") {
+      return false;
+    }
     state.stock = data.stock;
     state.waste = data.waste;
     state.foundations = data.foundations;
@@ -566,12 +577,19 @@ function createCardElement(card, source, sourceIndex, cardIndex) {
     el.classList.add(isRed(card.suit) ? "red" : "black");
     const symbol = SUIT_SYMBOLS[card.suit];
 
-    el.innerHTML =
-      `<span class="card-rank-top">${card.rank}</span>` +
-      `<span class="card-suit-top">${symbol}</span>` +
-      `<span class="card-suit-centre">${symbol}</span>` +
-      `<span class="card-rank-bottom">${card.rank}</span>` +
-      `<span class="card-suit-bottom">${symbol}</span>`;
+    const parts = [
+      ["span", "card-rank-top", card.rank],
+      ["span", "card-suit-top", symbol],
+      ["span", "card-suit-centre", symbol],
+      ["span", "card-rank-bottom", card.rank],
+      ["span", "card-suit-bottom", symbol]
+    ];
+    for (const [tag, cls, text] of parts) {
+      const s = document.createElement(tag);
+      s.className = cls;
+      s.textContent = text;
+      el.appendChild(s);
+    }
   } else {
     el.classList.add("face-down");
   }

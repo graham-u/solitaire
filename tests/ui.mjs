@@ -51,7 +51,7 @@ export default async function run() {
       assert(result.hasCard, "stock should have a face-down card");
     });
 
-    await test("version div shows v1", async () => {
+    await test("version div shows version number", async () => {
       const text = await ev(
         () => document.getElementById("version").textContent
       );
@@ -88,18 +88,28 @@ export default async function run() {
     await test("red cards have red class", async () => {
       const result = await ev(() => {
         dealGame();
+        // Place a known red card as the top card of column 0
+        state.tableau[0] = [{ suit: "hearts", rank: "5", faceUp: true }];
+        // Place a known black card as the top card of column 1
+        state.tableau[1] = [{ suit: "spades", rank: "8", faceUp: true }];
         render();
-        // Find a hearts or diamonds card
-        for (const col of state.tableau) {
-          const top = col[col.length - 1];
-          if (top?.faceUp && (top.suit === "hearts" || top.suit === "diamonds")) {
-            return true;
-          }
-        }
-        return false;
+        const redCard = document.querySelector(
+          '.card[data-source="tableau"][data-source-index="0"][data-card-index="0"]'
+        );
+        const blackCard = document.querySelector(
+          '.card[data-source="tableau"][data-source-index="1"][data-card-index="0"]'
+        );
+        return {
+          redHasRedClass: redCard?.classList.contains("red"),
+          redHasBlackClass: redCard?.classList.contains("black"),
+          blackHasBlackClass: blackCard?.classList.contains("black"),
+          blackHasRedClass: blackCard?.classList.contains("red"),
+        };
       });
-      // Just verify the logic exists — specific card colours depend on deal
-      assert(typeof result === "boolean", "red card check should return boolean");
+      assert(result.redHasRedClass, "hearts card should have red class");
+      assert(!result.redHasBlackClass, "hearts card should not have black class");
+      assert(result.blackHasBlackClass, "spades card should have black class");
+      assert(!result.blackHasRedClass, "spades card should not have red class");
     });
 
     await test("face-down cards have crosshatch pattern", async () => {

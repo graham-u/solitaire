@@ -189,6 +189,15 @@ export default async function run() {
       });
       assert(!result, "9 on J should be rejected (need 10)");
     });
+
+    await test("canPlaceOnTableau: rejects placement when top card is face-down", async () => {
+      const result = await ev(() => {
+        const faceDown = { suit: "spades", rank: "J", faceUp: false };
+        const red10 = { suit: "hearts", rank: "10", faceUp: true };
+        return canPlaceOnTableau(red10, [faceDown]);
+      });
+      assert(!result, "should reject placement on face-down card");
+    });
   });
 
   return summary();
