@@ -1,11 +1,11 @@
-const CACHE_NAME = "solitaire-v1";
+const CACHE_NAME = "solitaire-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./app.js",
   "./manifest.json",
-  "./icon.svg"
+  "./icon.png"
 ];
 
 self.addEventListener("install", (e) => {

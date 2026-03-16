@@ -36,8 +36,8 @@ jobs:
           sed -i 's/#3a9e4a/#c9941a/' style.css
           sed -i 's/#2d7a3a/#c97b1a/g' style.css
           sed -i 's/#1e5c28/#8a5510/' style.css
-          # Icon: green→orange background
-          sed -i 's/fill="#2d7a3a"/fill="#c97b1a"/' icon.svg
+          # Icon: swap to orange staging icon
+          cp icon-staging.png icon.png
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

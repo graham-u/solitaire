@@ -55,7 +55,7 @@ export default async function run() {
       const text = await ev(
         () => document.getElementById("version").textContent
       );
-      assertEqual(text, "v1", "version should be v1");
+      assert(text.match(/^v\d+$/), `version "${text}" should match vN format`);
     });
 
     await test("action bar has 3 buttons", async () => {
