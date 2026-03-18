@@ -1,9 +1,10 @@
-const CACHE_NAME = "solitaire-v9";
+const CACHE_NAME = "solitaire-v10";
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./app.js",
+  "./solver-worker.js",
   "./manifest.json",
   "./icon.png"
 ];

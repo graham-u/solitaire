@@ -26,6 +26,16 @@ let undoStack = [];
 let timerInterval = null;
 let hintTimeout = null;
 
+/* ── Solver state ── */
+
+let solverWorker = null;
+let solverState = {
+  hasCompletedFirstCycle: false,
+  lastResult: null,
+  running: false,
+  currentSolveId: 0
+};
+
 /* ── Deck ── */
 
 function createDeck() {
@@ -62,6 +72,7 @@ function dealGame() {
     recycleCount: 0
   };
   undoStack = [];
+  resetSolverState();
 
   // Deal to tableau
   for (let col = 0; col < 7; col++) {
@@ -183,8 +194,12 @@ function recycleWaste() {
     state.stock.push(card);
   }
   state.moves++;
+  if (state.recycleCount >= 1) {
+    solverState.hasCompletedFirstCycle = true;
+  }
   render();
   saveState();
+  maybeTriggerSolver();
 }
 
 function moveCardToFoundation(card, fromPile, foundationIndex) {
@@ -318,6 +333,9 @@ function handleCardTap(cardEl) {
 
 function undo() {
   if (undoStack.length === 0) return;
+  cancelSolver();
+  solverState.lastResult = null;
+  hideUnwinnableOverlay();
   const prev = undoStack.pop();
   state.stock = prev.stock;
   state.waste = prev.waste;
@@ -326,6 +344,7 @@ function undo() {
   state.score = prev.score;
   state.moves = prev.moves;
   state.recycleCount = prev.recycleCount;
+  solverState.hasCompletedFirstCycle = state.recycleCount >= 1;
   updateUndoButton();
   render();
   saveState();
@@ -544,6 +563,7 @@ function loadState() {
     state.firstMove = data.firstMove || false;
     state.recycleCount = data.recycleCount || 0;
     undoStack = [];
+    solverState.hasCompletedFirstCycle = state.recycleCount >= 1;
     if (state.firstMove) startTimer();
     return true;
   } catch (e) {
@@ -683,7 +703,8 @@ function renderTableau() {
 
 function overlayActive() {
   return !document.getElementById("win-overlay").classList.contains("hidden") ||
-         !document.getElementById("confirm-overlay").classList.contains("hidden");
+         !document.getElementById("confirm-overlay").classList.contains("hidden") ||
+         !document.getElementById("unwinnable-overlay").classList.contains("hidden");
 }
 
 let pointerStart = null;
@@ -763,6 +784,12 @@ document.getElementById("btn-win-new-game").addEventListener("click", () => {
   dealGame();
 });
 
+document.getElementById("btn-unwinnable-new-game").addEventListener("click", () => {
+  hideUnwinnableOverlay();
+  clearSavedState();
+  dealGame();
+});
+
 /* ── Visibility change for timer ── */
 
 document.addEventListener("visibilitychange", () => {
@@ -773,6 +800,97 @@ document.addEventListener("visibilitychange", () => {
     startTimer();
   }
 });
+
+/* ── Solver ── */
+
+function cancelSolver() {
+  // The worker runs synchronously and can't be interrupted, but incrementing
+  // currentSolveId ensures any in-flight result is ignored (stale solveId).
+  solverState.currentSolveId++;
+  solverState.running = false;
+}
+
+function resetSolverState() {
+  cancelSolver();
+  solverState.hasCompletedFirstCycle = false;
+  solverState.lastResult = null;
+  solverState.running = false;
+  hideUnwinnableOverlay();
+}
+
+function hideUnwinnableOverlay() {
+  document.getElementById("unwinnable-overlay").classList.add("hidden");
+}
+
+function showUnwinnableOverlay() {
+  document.getElementById("unwinnable-overlay").classList.remove("hidden");
+}
+
+function maybeTriggerSolver() {
+  if (!solverState.hasCompletedFirstCycle) return;
+  if (solverState.lastResult === "unwinnable") return;
+  if (solverState.running) return;
+
+  // Lazily create worker
+  if (!solverWorker && typeof Worker !== "undefined") {
+    solverWorker = new Worker("solver-worker.js");
+    solverWorker.onmessage = function(e) {
+      const msg = e.data;
+      if (msg.type === "result") {
+        // Ignore stale results entirely
+        if (msg.solveId !== solverState.currentSolveId) return;
+        solverState.running = false;
+        solverState.lastResult = msg.outcome;
+        if (msg.outcome === "unwinnable") {
+          showUnwinnableOverlay();
+        }
+      }
+    };
+    solverWorker.onerror = function() {
+      // Worker crashed — reset state so the solver doesn't stay stuck
+      solverState.running = false;
+      solverWorker = null;
+    };
+  }
+
+  if (!solverWorker) return;
+
+  solverState.currentSolveId++;
+  solverState.running = true;
+  solverWorker.postMessage({
+    type: "solve",
+    state: {
+      stock: state.stock,
+      waste: state.waste,
+      foundations: state.foundations,
+      tableau: state.tableau,
+      recycleCount: state.recycleCount
+    },
+    timeLimit: 3000,
+    solveId: solverState.currentSolveId
+  });
+}
+
+/* Helper for async test assertions */
+window.waitForSolverResult = function(maxWait) {
+  maxWait = maxWait || 10000;
+  return new Promise((resolve) => {
+    if (!solverState.running) {
+      resolve(solverState.lastResult);
+      return;
+    }
+    const start = Date.now();
+    const check = setInterval(() => {
+      if (!solverState.running) {
+        clearInterval(check);
+        resolve(solverState.lastResult);
+      } else if (Date.now() - start > maxWait) {
+        clearInterval(check);
+        resolve("timeout");
+      }
+    }, 50);
+  });
+};
 
 /* ── Init ── */
 

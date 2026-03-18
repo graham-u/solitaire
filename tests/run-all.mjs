@@ -13,6 +13,7 @@
 import gameLogic from "./game-logic.mjs";
 import gameplay from "./gameplay.mjs";
 import ui from "./ui.mjs";
+import solver from "./solver.mjs";
 
 console.log("Solitaire Test Suite");
 console.log("====================");
@@ -22,6 +23,7 @@ let totalFails = 0;
 totalFails += await gameLogic();
 totalFails += await gameplay();
 totalFails += await ui();
+totalFails += await solver();
 
 console.log("\n====================");
 if (totalFails === 0) {
