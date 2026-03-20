@@ -182,6 +182,20 @@ function findAllMoves(s) {
     }
   }
 
+  // Foundation top cards back to tableau (the game allows this)
+  for (let fi = 0; fi < 4; fi++) {
+    const pile = s.foundations[fi];
+    if (pile.length === 0) continue;
+    const card = pile[pile.length - 1];
+    for (let ti = 0; ti < 7; ti++) {
+      const col = s.tableau[ti];
+      const colTop = col.length > 0 ? col[col.length - 1] : null;
+      if (canPlaceOnTableau(card, colTop)) {
+        moves.push({ type: "foundation-to-tableau", fi, ti, priority: 3 });
+      }
+    }
+  }
+
   // Face-up sub-stacks between tableau columns (full and partial runs)
   for (let col = 0; col < 7; col++) {
     const column = s.tableau[col];
@@ -272,6 +286,11 @@ function applyMove(s, move) {
       s.waste.push(card);
       break;
     }
+    case "foundation-to-tableau": {
+      const card = s.foundations[move.fi].pop();
+      s.tableau[move.ti].push(card);
+      break;
+    }
     case "recycle": {
       s.recycleCount++;
       while (s.waste.length > 0) {
@@ -303,9 +322,13 @@ function solve(initialState, timeLimit) {
   const maxVisited = 200000;
   const maxDepth = 300;
   let statesExplored = 0;
+  let hitDepthLimit = false;
 
   function dfs(s, depth) {
-    if (depth > maxDepth) return false;
+    if (depth > maxDepth) {
+      hitDepthLimit = true;
+      return false; // skip this branch but track that search was incomplete
+    }
 
     // Apply dominance moves
     applyDominanceMoves(s);
@@ -343,6 +366,8 @@ function solve(initialState, timeLimit) {
 
   if (result === true) return "winnable";
   if (result === null) return "timeout";
+  // Only declare unwinnable if search was truly exhaustive (no depth limits hit)
+  if (hitDepthLimit) return "timeout";
   return "unwinnable";
 }
 
